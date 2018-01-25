@@ -274,6 +274,26 @@ class RunViewer(object):
         self._shots_to_process_thread.daemon = True
         self._shots_to_process_thread.start()
 
+
+    def mouseMovedEvent(self, position, ui, name):
+        v = ui.scene().views()[0]
+        viewP = v.mapFromScene(position)
+        glob_pos = ui.mapToGlobal(viewP)  # convert to Screen x
+        glob_zero = ui.mapToGlobal(QPoint(0, 0))
+        self._global_start_x = glob_zero.x()
+        self._global_start_y = glob_zero.y()
+        self._global_width = ui.width()
+        self._global_height = ui.height()
+
+        coord_pos = ui.plotItem.vb.mapSceneToView(position)
+
+        if len(self.get_selected_shots_and_colours()) > 0:
+            unscaled_t = coord_pos.x()
+            if unscaled_t is not None:
+                pos = QPoint(glob_pos.x(), glob_pos.y())
+                text = "Plot: {} \nTime: {:.4f}ms\nValue: {:.2f}".format(name, unscaled_t * 1000, coord_pos.y())
+                QToolTip.showText(pos, text)
+
     def _process_shots(self):
         while True:
             filepath = shots_to_process_queue.get()
@@ -631,6 +651,7 @@ class RunViewer(object):
         self.plot_widgets[channel].showAxis('right', True)
         self.plot_widgets[channel].setXLink('runviewer - time axis link')
         self.plot_widgets[channel].sigXRangeChanged.connect(self.on_x_range_changed)
+        self.plot_widgets[channel].scene().sigMouseMoved.connect(lambda pos: self.mouseMovedEvent(pos, self.plot_widgets[channel], channel))
         self.ui.plot_layout.addWidget(self.plot_widgets[channel])
         self.shutter_lines[channel] = {}  # initialize Storage for shutter lines
         self.plot_items.setdefault(channel, {})
